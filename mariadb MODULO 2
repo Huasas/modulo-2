@@ -1,0 +1,104 @@
+
+
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.ext.declarative import declarative_base
+
+
+engine = create_engine('mariadb+pymysql://admin:admin123@localhost/diccionario.db')
+Session = sessionmaker(bind=engine)
+Base = declarative_base()
+
+class Palabra(Base):
+    __tablename__ = 'palabra'
+    id = Column(Integer, primary_key=True)
+    palabra = Column(String(50))
+    concepto_id = Column(Integer, ForeignKey('concepto.id'))
+    concepto = relationship("Concepto", back_populates="palabras")
+
+class Concepto(Base):
+    __tablename__ = 'concepto'
+    id = Column(Integer, primary_key=True)
+    concepto = Column(String(200))
+    palabras = relationship("Palabra", back_populates="concepto")
+
+
+Base.metadata.create_all(engine)
+
+def crear_palabra(session):
+
+    palabra = input("Palabra: ")
+    concepto_id = int(input("ID del concepto: "))
+
+    nueva_palabra = Palabra(palabra=palabra, concepto_id=concepto_id)
+    session.add(nueva_palabra)
+    session.commit()
+
+def editar_palabra(session):
+
+    id_palabra = int(input("ID de la palabra a editar: "))
+
+    palabra = session.query(Palabra).filter_by(id=id_palabra).first()
+    if palabra is None:
+        print("La palabra no existe")
+        return
+
+    nueva_palabra = input(f"Palabra ({palabra.palabra}): ")
+    nuevo_concepto_id = input(f"ID del concepto ({palabra.concepto_id}): ")
+
+    if nueva_palabra:
+        palabra.palabra = nueva_palabra
+    if nuevo_concepto_id:
+        palabra.concepto_id = nuevo_concepto_id
+    session.commit()
+
+def eliminar_palabra(session):
+
+    id_palabra = int(input("ID de la palabra a eliminar: "))
+
+    palabra = session.query(Palabra).filter_by(id=id_palabra).first()
+    if palabra is None:
+        print("La palabra no existe")
+        return
+
+    session.delete(palabra)
+    session.commit()
+
+
+def menu():
+    print("Bievenido al diccionario Panameno")
+    print("1. Agregar palabra")
+    print("2. Editar palabra")
+    print("3. Eliminar palabra")
+    print("4. Mostrar todas las palabras")
+    print("5. Salir")
+
+def main():
+
+    session = Session()
+
+    while True:
+        menu()
+        opcion = input("Selecciona una opción: ")
+
+        if opcion == "1":
+            crear_palabra(session)
+        elif opcion == "2":
+            editar_palabra(session)
+        elif opcion == "3":
+            eliminar_palabra(session)
+        elif opcion == "4":
+
+            palabras = session.query(Palabra).all()
+            for palabra in palabras:
+                print(f"{palabra.id}: {palabra.palabra} ({palabra.concepto.concepto})")
+        elif opcion == "5":
+
+            break
+        else:
+            print("Opción no válida")
+
+    session.close()
+
+if __name__ == "__main__":
+    main()
